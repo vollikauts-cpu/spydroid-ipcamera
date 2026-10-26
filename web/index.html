@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spydroid WebRTC</title>
+<style>
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: #10121a;
+  color: white;
+  font-family: Arial, sans-serif;
+}
+header {
+  padding: 20px;
+  background: #1b1e2a;
+  font-size: 22px;
+  font-weight: bold;
+}
+main {
+  padding: 20px;
+  max-width: 900px;
+  margin: auto;
+}
+video {
+  width: 100%;
+  aspect-ratio: 16/9;
+  background: black;
+  border-radius: 14px;
+}
+.status {
+  padding: 15px;
+  margin: 20px 0;
+  background: #242838;
+  border-radius: 10px;
+}
+button {
+  padding: 14px 20px;
+  border: 0;
+  border-radius: 10px;
+  background: #7555ed;
+  color: white;
+  font-size: 16px;
+}
+</style>
+</head>
+<body>
+<header>Spydroid WebRTC</header>
+<main>
+  <h2>Панель видеонаблюдения</h2>
+  <video id="player" autoplay playsinline controls></video>
+  <div class="status" id="status">
+    Статус: ожидание подключения
+  </div>
+  <button id="connect">Проверить сервер</button>
+</main>
+<script>
+document.getElementById('connect').onclick = async () => {
+  const status = document.getElementById('status');
+  try {
+    const response = await fetch('/health');
+    if (!response.ok) throw new Error('HTTP ' + response.status);
+    status.textContent = 'Сервер доступен. Видеопоток пока не подключён.';
+  } catch (error) {
+    status.textContent = 'Ошибка подключения к серверу';
+  }
+};
+</script>
+</body>
+</html>

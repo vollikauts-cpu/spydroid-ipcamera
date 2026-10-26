@@ -13,3 +13,21 @@ local.properties
 custom_rules.xml
 ant.properties
 *~
+server/.env
+server/node_modules/
+
+server/.admin
+
+# Android / Gradle
+.gradle/
+build/
+**/build/
+
+# Node.js
+node_modules/
+server/.env
+server/.admin
+
+# Local secrets
+*.keystore
+*.jks
