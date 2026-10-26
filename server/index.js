@@ -71,7 +71,27 @@ const server = app.listen(PORT, HOST, () => {
   console.log(`Server running at http://${HOST}:${PORT}`);
 });
 
-const wss = new WebSocketServer({ server, path: '/signal' });
+const wss = new WebSocketServer({ noServer: true });
+
+server.on('upgrade', (req, socket, head) => {
+  const url = new URL(req.url, 'http://localhost');
+
+  if (url.pathname !== '/signal') {
+    socket.destroy();
+    return;
+  }
+
+  sessionMiddleware(req, {}, (err) => {
+    if (err) {
+      socket.destroy();
+      return;
+    }
+
+    wss.handleUpgrade(req, socket, head, (ws) => {
+      wss.emit('connection', ws, req);
+    });
+  });
+});
 
 app.get('/health', (req, res) => {
   res.json({
@@ -80,29 +100,95 @@ app.get('/health', (req, res) => {
   });
 });
 
+
+const peers = {
+  camera: null,
+  viewer: null
+};
+
+function send(peer, message) {
+  if (peer && peer.readyState === WebSocket.OPEN) {
+    peer.send(JSON.stringify(message));
+  }
+}
+
 wss.on('connection', (ws, req) => {
+  // Сессия Express проверяется до обработки подключения.
+
   const url = new URL(req.url, 'http://localhost');
-  const provided = url.searchParams.get('token') || '';
-
-  const expectedHash = crypto.createHash('sha256')
-    .update(AUTH_TOKEN).digest();
-  const providedHash = crypto.createHash('sha256')
-    .update(provided).digest();
-
-  if (!crypto.timingSafeEqual(expectedHash, providedHash)) {
-    ws.close(1008, 'Unauthorized');
+  const role = url.searchParams.get('role');
+  if (!['camera', 'viewer'].includes(role)) {
+    ws.close(1008, 'Invalid role');
     return;
   }
 
-  console.log('WebSocket client connected');
+  if (role === 'camera') {
+    const provided = req.headers['x-device-token'] || '';
+    const expected = crypto.createHash('sha256')
+      .update(AUTH_TOKEN).digest();
+    const received = crypto.createHash('sha256')
+      .update(String(provided)).digest();
 
-  ws.on('message', (data) => {
-    // Пока только проверяем получение сообщений.
-    // Передачу SDP/ICE добавим после авторизации.
-    console.log('Message received, bytes:', data.length);
+    if (!crypto.timingSafeEqual(expected, received)) {
+      ws.close(1008, 'Unauthorized');
+      return;
+    }
+  }
+
+  if (role === 'viewer') {
+    if (!req.session?.authenticated) {
+      ws.close(1008, 'Login required');
+      return;
+    }
+  }
+
+  if (peers[role]) {
+    ws.close(1008, 'Role already connected');
+    return;
+  }
+
+  peers[role] = ws;
+  console.log(role + ' connected');
+
+  send(peers.viewer, {
+    type: 'camera-status',
+    online: !!peers.camera
+  });
+
+  ws.on('message', data => {
+    if (data.length > 65536) {
+      ws.close(1009, 'Message too large');
+      return;
+    }
+
+    let message;
+    try {
+      message = JSON.parse(data.toString());
+    } catch {
+      return;
+    }
+
+    if (!['offer', 'answer', 'candidate'].includes(message.type)) {
+      return;
+    }
+
+    const destination = role === 'camera'
+      ? peers.viewer
+      : peers.camera;
+
+    send(destination, message);
   });
 
   ws.on('close', () => {
-    console.log('WebSocket client disconnected');
+    if (peers[role] === ws) {
+      peers[role] = null;
+    }
+
+    send(peers.viewer, {
+      type: 'camera-status',
+      online: !!peers.camera
+    });
+
+    console.log(role + ' disconnected');
   });
 });
