@@ -524,7 +524,7 @@ public class EncoderDebugger {
 	/**
 	 * Instantiates and starts the encoder.
 	 */
-	private void configureEncoder()  {
+	private void configureEncoder() throws java.io.IOException {
 		mEncoder = MediaCodec.createByCodecName(mEncoderName);
 		MediaFormat mediaFormat = MediaFormat.createVideoFormat(MIME_TYPE, mWidth, mHeight);
 		mediaFormat.setInteger(MediaFormat.KEY_BIT_RATE, BITRATE);
@@ -549,7 +549,7 @@ public class EncoderDebugger {
 	/**
 	 * Instantiates and starts the decoder.
 	 */	
-	private void configureDecoder() {
+	private void configureDecoder() throws java.io.IOException {
 		byte[] prefix = new byte[] {0x00,0x00,0x00,0x01};
 
 		ByteBuffer csd0 = ByteBuffer.allocate(4+mSPS.length+4+mPPS.length);
