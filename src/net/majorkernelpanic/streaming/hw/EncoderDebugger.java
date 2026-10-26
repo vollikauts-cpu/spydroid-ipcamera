@@ -810,7 +810,7 @@ public class EncoderDebugger {
 			return false;
 	}
 	
-	private void encodeDecode() {
+	private void encodeDecode() throws java.io.IOException {
 		encode();
 		try {
 			configureDecoder();
