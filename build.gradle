@@ -5,6 +5,7 @@ plugins {
 android {
     namespace 'net.majorkernelpanic.spydroid'
     compileSdk 35
+    useLibrary 'org.apache.http.legacy'
 
     defaultConfig {
         applicationId 'net.majorkernelpanic.spydroid'
